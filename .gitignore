@@ -1,0 +1,14 @@
+# 学習済みモデル（サイズが大きい・非公開）
+checkpoints/
+
+# 自動で作り直せるもの
+.venv/
+processed/
+outputs/
+__pycache__/
+*.pyc
+
+# OS・エディタ
+.DS_Store
+.vscode/
+.idea/

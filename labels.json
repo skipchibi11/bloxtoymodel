@@ -1,0 +1,121 @@
+{
+  "_説明": "ファイル名ごとに追加のラベル（日本語名・言い換えなど）を書く。title とファイル名は自動でラベルになるので書かなくてよい。",
+  "bee.json": [
+    "ハチ",
+    "ミツバチ",
+    "honeybee"
+  ],
+  "pig.json": [
+    "ブタ",
+    "子ブタ",
+    "piggy"
+  ],
+  "present-box.json": [
+    "プレゼント",
+    "プレゼントの箱",
+    "ギフトボックス",
+    "gift box"
+  ],
+  "rose.json": [
+    "バラ",
+    "赤いバラ",
+    "red rose",
+    "flower"
+  ],
+  "sunflower.json": [
+    "ヒマワリ",
+    "ひまわり",
+    "花",
+    "flower"
+  ],
+  "tree.json": [
+    "木",
+    "緑の木",
+    "green tree"
+  ],
+  "whale.json": [
+    "クジラ",
+    "くじら"
+  ],
+  "balloon.json": [
+    "風船",
+    "バルーン"
+  ],
+  "bench.json": [
+    "ベンチ",
+    "木のベンチ",
+    "wooden bench",
+    "椅子"
+  ],
+  "book.json": [
+    "本",
+    "ブック",
+    "絵本"
+  ],
+  "cherry.json": [
+    "サクランボ",
+    "さくらんぼ",
+    "チェリー",
+    "果物",
+    "fruit"
+  ],
+  "clownfish.json": [
+    "カクレクマノミ",
+    "クマノミ",
+    "魚",
+    "fish"
+  ],
+  "emperor-penguin-chick.json": [
+    "ペンギン",
+    "皇帝ペンギンのヒナ",
+    "ペンギンの赤ちゃん",
+    "penguin",
+    "鳥",
+    "bird"
+  ],
+  "ghost.json": [
+    "おばけ",
+    "オバケ",
+    "幽霊",
+    "ghost"
+  ],
+  "kamakura.json": [
+    "かまくら",
+    "カマクラ",
+    "雪の家",
+    "snow hut",
+    "igloo"
+  ],
+  "long-tailed-tit.json": [
+    "シマエナガ",
+    "エナガ",
+    "小鳥",
+    "鳥",
+    "bird"
+  ],
+  "shiba-inu.json": [
+    "柴犬",
+    "シバイヌ",
+    "犬",
+    "イヌ",
+    "dog"
+  ],
+  "snowman.json": [
+    "雪だるま",
+    "ゆきだるま",
+    "スノーマン"
+  ],
+  "toy-poodle.json": [
+    "トイプードル",
+    "プードル",
+    "犬",
+    "イヌ",
+    "dog"
+  ],
+  "tulip.json": [
+    "チューリップ",
+    "赤いチューリップ",
+    "花",
+    "flower"
+  ]
+}

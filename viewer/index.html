@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BloxToy Viewer</title>
+<style>
+  :root { --bg:#f4f5f7; --panel:#ffffff; --text:#212529; --muted:#6c757d; --line:#dee2e6; --accent:#ff8a3d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Hiragino Sans", sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; }
+  #side { width:280px; background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; }
+  #side h1 { font-size:16px; margin:16px; }
+  #list { flex:1; overflow:auto; border-top:1px solid var(--line); }
+  #list button { display:block; width:100%; text-align:left; border:0; background:none; padding:8px 16px; font-size:13px; cursor:pointer; color:var(--text); }
+  #list button:hover { background:#f1f3f5; }
+  #list button.active { background:#fff1e6; color:var(--accent); font-weight:600; }
+  #list .group { font-size:11px; color:var(--muted); padding:10px 16px 4px; text-transform:uppercase; }
+  #opts { padding:12px 16px; border-top:1px solid var(--line); font-size:13px; }
+  #opts label { display:block; margin:4px 0; cursor:pointer; }
+  #info { padding:12px 16px; border-top:1px solid var(--line); font-size:12px; line-height:1.6; max-height:40%; overflow:auto; }
+  #info .sw { display:inline-block; width:12px; height:12px; border:1px solid #0002; vertical-align:middle; margin-right:4px; border-radius:2px; }
+  #view { flex:1; position:relative; }
+  #drop { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:#ff8a3d33; font-size:20px; pointer-events:none; }
+  #gen { padding:0 16px 14px; }
+  #gen form { display:flex; gap:6px; }
+  #gen input[type=text] { flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  #gen button.go { padding:8px 12px; border:0; border-radius:6px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+  #gen button.go:disabled { opacity:.5; cursor:wait; }
+  #gen details { margin-top:8px; font-size:12px; color:var(--muted); }
+  #gen details label { display:flex; align-items:center; gap:6px; margin:4px 0; }
+  #gen details input[type=range] { flex:1; }
+  #gen-status { margin-top:8px; font-size:12px; color:var(--muted); min-height:1em; }
+  #gen-status.err { color:#d6336c; }
+  #gen-status button { margin:4px 4px 0 0; padding:3px 8px; border:1px solid var(--line); background:#fff; border-radius:4px; font-size:12px; cursor:pointer; }
+  .spin { display:inline-block; width:10px; height:10px; border:2px solid var(--accent); border-right-color:transparent; border-radius:50%; animation:r 0.8s linear infinite; vertical-align:-1px; margin-right:4px; }
+  @keyframes r { to { transform:rotate(360deg); } }
+  #hint { position:absolute; bottom:10px; right:14px; font-size:11px; color:var(--muted); }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="side">
+  <h1>BloxToy Viewer</h1>
+  <div id="gen">
+    <form id="gen-form">
+      <input type="text" id="gen-text" placeholder="作りたいもの（例：ネズミ）" maxlength="100" autocomplete="off">
+      <button class="go" id="gen-btn">生成</button>
+    </form>
+    <details>
+      <summary>詳細設定</summary>
+      <label>個数 <select id="gen-n"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+      <label>ランダムさ <input type="range" id="gen-temp" min="0.3" max="1.2" step="0.1" value="0.7"> <span id="gen-temp-v">0.7</span></label>
+      <label>指示に従う強さ <input type="range" id="gen-guid" min="1" max="8" step="0.5" value="3"> <span id="gen-guid-v">3</span></label>
+    </details>
+    <div id="gen-status"></div>
+  </div>
+  <div id="list"></div>
+  <div id="opts">
+    <label><input type="checkbox" id="quant"> 色を16段階に丸めて表示（学習時の色）</label>
+    <label><input type="checkbox" id="grid" checked> 16×16 グリッドを表示</label>
+    <label><input type="checkbox" id="spin"> 自動回転</label>
+  </div>
+  <div id="info">ファイルを選択してください。<br>JSON をドラッグ＆ドロップしても表示できます。</div>
+</div>
+<div id="view">
+  <div id="drop">ここにドロップ</div>
+  <div id="hint">ドラッグ: 回転 / 右ドラッグ: 移動 / ホイール: ズーム</div>
+</div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const view = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf4f5f7);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+camera.position.set(22, 18, 22);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 5, 0);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(10, 20, 8);
+scene.add(sun);
+
+const G = 16, HALF = G / 2;
+const gridGroup = new THREE.Group();
+const gridHelper = new THREE.GridHelper(G, G, 0xadb5bd, 0xdee2e6);
+gridGroup.add(gridHelper);
+const box = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(G, G, G)),
+  new THREE.LineBasicMaterial({ color: 0xced4da, transparent: true, opacity: 0.5 }));
+box.position.y = HALF;
+gridGroup.add(box);
+// 軸ラベル（+X 赤 / +Z 青）
+const axes = new THREE.AxesHelper(3);
+axes.position.set(-HALF, 0.01, -HALF);
+gridGroup.add(axes);
+scene.add(gridGroup);
+
+let model = new THREE.Group();
+scene.add(model);
+let current = null;
+const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+const edgeGeo = new THREE.EdgesGeometry(cubeGeo);
+
+const quantize = hex => {
+  const n = parseInt(hex.slice(1), 16);
+  const q = v => Math.min(255, Math.round(v / 17) * 17);  // 16段階: 0,17,...,255
+  const r = q(n >> 16 & 255), g = q(n >> 8 & 255), b = q(n & 255);
+  return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+};
+
+// 素材ごとの見た目（未知の素材は少し透ける＋白枠で目印）
+function makeMaterial(color, m) {
+  if (!m) return new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+  if (m === "glass") return new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.45, roughness: 0.1 });
+  return new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.7, emissive: color, emissiveIntensity: 0.3 });
+}
+
+function render(json, name) {
+  current = { json, name };
+  scene.remove(model);
+  model = new THREE.Group();
+  const blocks = json?.data?.blocks ?? [];
+  const useQ = document.getElementById("quant").checked;
+  const cache = new Map();
+  const colors = new Map(), mats = new Map();
+  for (const b of blocks) {
+    const c = (b.c || "#cccccc").toLowerCase();
+    const col = useQ ? quantize(c) : c;
+    const key = col + "|" + (b.m || "");
+    if (!cache.has(key)) cache.set(key, makeMaterial(col, b.m));
+    const mesh = new THREE.Mesh(cubeGeo, cache.get(key));
+    mesh.position.set(b.x - HALF + 0.5, b.y + 0.5, b.z - HALF + 0.5);
+    model.add(mesh);
+    if (b.m && b.m !== "glass") {
+      const e = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0xffffff }));
+      e.position.copy(mesh.position);
+      model.add(e);
+    }
+    colors.set(c, (colors.get(c) || 0) + 1);
+    if (b.m) mats.set(b.m, (mats.get(b.m) || 0) + 1);
+  }
+  scene.add(model);
+
+  const sorted = [...colors].sort((a, b) => b[1] - a[1]);
+  document.getElementById("info").innerHTML = `
+    <b>${esc(json.title ?? name)}</b><br>
+    ファイル: ${esc(name)}<br>
+    ブロック数: ${blocks.length} / グリッド: ${json?.data?.grid ?? "?"}<br>
+    素材: ${mats.size ? [...mats].map(([k, v]) => `${esc(k)}×${v}`).join(", ") : "なし"}<br>
+    色 (${colors.size}):<br>
+    ${sorted.map(([c, n]) => `<span class="sw" style="background:${c}"></span>${c}${useQ ? " → " + quantize(c) : ""} ×${n}`).join("<br>")}`;
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+async function loadList(select) {
+  const list = document.getElementById("list");
+  try {
+    const files = await (await fetch("/api/files")).json();
+    list.innerHTML = "";
+    let group = null;
+    for (const f of files) {
+      const g = f.split("/")[0];
+      if (g !== group) { group = g; list.insertAdjacentHTML("beforeend", `<div class="group">${esc(g)}</div>`); }
+      const btn = document.createElement("button");
+      btn.textContent = f.split("/").slice(1).join("/");
+      btn.dataset.file = f;
+      btn.onclick = async () => {
+        list.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+        btn.classList.add("active");
+        render(await (await fetch("/" + f)).json(), f);
+      };
+      list.appendChild(btn);
+    }
+    const target = select ? [...list.querySelectorAll("button")].find(b => b.dataset.file === select) : list.querySelector("button");
+    target?.click();
+    target?.scrollIntoView({ block: "nearest" });
+  } catch {
+    list.innerHTML = `<div class="group">一覧を取得できません</div><div style="padding:0 16px;font-size:12px">python3 viewer/serve.py で起動してください</div>`;
+  }
+}
+
+// 生成
+const $ = id => document.getElementById(id);
+$("gen-temp").oninput = e => $("gen-temp-v").textContent = e.target.value;
+$("gen-guid").oninput = e => $("gen-guid-v").textContent = e.target.value;
+$("gen-form").onsubmit = async e => {
+  e.preventDefault();
+  const text = $("gen-text").value.trim();
+  const st = $("gen-status");
+  if (!text) { $("gen-text").focus(); return; }
+  $("gen-btn").disabled = true;
+  st.className = "";
+  const t0 = Date.now();
+  const tick = () => st.innerHTML = `<span class="spin"></span>「${esc(text)}」を生成中… ${Math.floor((Date.now() - t0) / 1000)}秒`;
+  tick();
+  const timer = setInterval(tick, 1000);
+  try {
+    const res = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, n: +$("gen-n").value, temp: +$("gen-temp").value, guidance: +$("gen-guid").value }) });
+    let r;
+    try { r = await res.json(); }
+    catch { throw new Error("サーバーが生成に対応していません。古いサーバーを Ctrl+C で止めて、.venv/bin/python viewer/serve.py で起動し直してください"); }
+    if (!res.ok) throw new Error(r.error || res.statusText);
+    await loadList(r.files[0]);
+    st.innerHTML = `「${esc(text)}」を ${r.files.length} 個作りました（${r.seconds}秒）<br>` +
+      r.files.map((f, i) => `<button data-f="${esc(f)}">候補${i + 1}（${r.blocks[i]}個）</button>`).join("");
+    st.querySelectorAll("button").forEach(b => b.onclick = () => loadList(b.dataset.f));
+  } catch (err) {
+    st.className = "err";
+    st.textContent = err.message === "Failed to fetch" ? "サーバーに接続できません" : err.message;
+  } finally {
+    clearInterval(timer);
+    $("gen-btn").disabled = false;
+  }
+};
+
+// ドラッグ＆ドロップ
+const drop = document.getElementById("drop");
+addEventListener("dragover", e => { e.preventDefault(); drop.style.display = "flex"; });
+addEventListener("dragleave", () => drop.style.display = "none");
+addEventListener("drop", async e => {
+  e.preventDefault(); drop.style.display = "none";
+  const f = e.dataTransfer.files[0];
+  if (f) render(JSON.parse(await f.text()), f.name);
+});
+
+document.getElementById("quant").onchange = () => current && render(current.json, current.name);
+document.getElementById("grid").onchange = e => gridGroup.visible = e.target.checked;
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+resize();
+
+renderer.setAnimationLoop(() => {
+  controls.autoRotate = document.getElementById("spin").checked;
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+loadList();
+</script>
+</body>
+</html>
